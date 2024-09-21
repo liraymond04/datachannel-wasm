@@ -156,6 +156,8 @@ PeerConnection::PeerConnection(const Configuration &config) {
 
 PeerConnection::~PeerConnection() { rtcDeletePeerConnection(mId); }
 
+void PeerConnection::close() {}
+
 PeerConnection::State PeerConnection::state() const { return mState; }
 
 PeerConnection::IceState PeerConnection::iceState() const { return mIceState; }
@@ -205,6 +207,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	return std::make_shared<DataChannel>(rtcCreateDataChannel(
 	    mId, label.c_str(), init.reliability.unordered, maxRetransmits, maxPacketLifeTime));
 }
+
+void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptionInit init) {}
 
 void PeerConnection::setRemoteDescription(const Description &description) {
 	rtcSetRemoteDescription(mId, string(description).c_str(), description.typeString().c_str());

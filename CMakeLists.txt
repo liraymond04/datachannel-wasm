@@ -4,6 +4,9 @@ project(datachannel-wasm
 	VERSION 0.3.0
 	LANGUAGES CXX)
 
+# Generate compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	message(FATAL_ERROR "datachannel-wasm must be compiled with Emscripten.")
 endif()
@@ -11,6 +14,7 @@ endif()
 set(WASM_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wasm/src)
 set(DATACHANNELS_SRC
 	${WASM_SRC_DIR}/candidate.cpp
+	${WASM_SRC_DIR}/capi.cpp
 	${WASM_SRC_DIR}/channel.cpp
 	${WASM_SRC_DIR}/configuration.cpp
 	${WASM_SRC_DIR}/description.cpp
