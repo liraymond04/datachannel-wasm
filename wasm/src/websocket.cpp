@@ -28,13 +28,13 @@
 #include <memory>
 
 extern "C" {
-extern int wsCreateWebSocket(const char *url);
-extern void wsDeleteWebSocket(int ws);
-extern void wsSetOpenCallback(int ws, void (*openCallback)(void *));
-extern void wsSetErrorCallback(int ws, void (*errorCallback)(const char *, void *));
-extern void wsSetMessageCallback(int ws, void (*messageCallback)(const char *, int, void *));
-extern int wsSendMessage(int ws, const char *buffer, int size);
-extern void wsSetUserPointer(int ws, void *ptr);
+extern int js_wsCreateWebSocket(const char *url);
+extern void js_wsDeleteWebSocket(int ws);
+extern void js_wsSetOpenCallback(int ws, void (*openCallback)(void *));
+extern void js_wsSetErrorCallback(int ws, void (*errorCallback)(const char *, void *));
+extern void js_wsSetMessageCallback(int ws, void (*messageCallback)(const char *, int, void *));
+extern int js_wsSendMessage(int ws, const char *buffer, int size);
+extern void js_wsSetUserPointer(int ws, void *ptr);
 }
 
 namespace rtc {
@@ -75,20 +75,20 @@ WebSocket::~WebSocket() { close(); }
 void WebSocket::open(const string &url) {
 	close();
 
-	mId = wsCreateWebSocket(url.c_str());
+	mId = js_wsCreateWebSocket(url.c_str());
 	if (!mId)
 		throw std::runtime_error("WebSocket not supported");
 
-	wsSetUserPointer(mId, this);
-	wsSetOpenCallback(mId, OpenCallback);
-	wsSetErrorCallback(mId, ErrorCallback);
-	wsSetMessageCallback(mId, MessageCallback);
+	js_wsSetUserPointer(mId, this);
+	js_wsSetOpenCallback(mId, OpenCallback);
+	js_wsSetErrorCallback(mId, ErrorCallback);
+	js_wsSetMessageCallback(mId, MessageCallback);
 }
 
 void WebSocket::close() {
 	mConnected = false;
 	if (mId) {
-		wsDeleteWebSocket(mId);
+		js_wsDeleteWebSocket(mId);
 		mId = 0;
 	}
 }
@@ -104,9 +104,9 @@ bool WebSocket::send(message_variant message) {
 	return std::visit(
 	    overloaded{[this](const binary &b) {
 		               auto data = reinterpret_cast<const char *>(b.data());
-		               return wsSendMessage(mId, data, int(b.size())) >= 0;
+		               return js_wsSendMessage(mId, data, int(b.size())) >= 0;
 	               },
-	               [this](const string &s) { return wsSendMessage(mId, s.c_str(), -1) >= 0; }},
+	               [this](const string &s) { return js_wsSendMessage(mId, s.c_str(), -1) >= 0; }},
 	    std::move(message));
 }
 
@@ -114,7 +114,7 @@ bool WebSocket::send(const byte *data, size_t size) {
 	if (!mId)
 		return false;
 
-	return wsSendMessage(mId, reinterpret_cast<const char *>(data), int(size)) >= 0;
+	return js_wsSendMessage(mId, reinterpret_cast<const char *>(data), int(size)) >= 0;
 }
 
 void WebSocket::triggerOpen() {

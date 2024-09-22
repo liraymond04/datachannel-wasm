@@ -29,30 +29,30 @@
 #include <stdexcept>
 
 extern "C" {
-extern int rtcCreatePeerConnection(const char **pUrls, const char **pUsernames,
+extern int js_rtcCreatePeerConnection(const char **pUrls, const char **pUsernames,
                                    const char **pPasswords, int nIceServers);
-extern void rtcDeletePeerConnection(int pc);
-extern char *rtcGetLocalDescription(int pc);
-extern char *rtcGetLocalDescriptionType(int pc);
-extern char *rtcGetRemoteDescription(int pc);
-extern char *rtcGetRemoteDescriptionType(int pc);
-extern int rtcCreateDataChannel(int pc, const char *label, bool unordered, int maxRetransmits,
+extern void js_rtcDeletePeerConnection(int pc);
+extern char *js_rtcGetLocalDescription(int pc);
+extern char *js_rtcGetLocalDescriptionType(int pc);
+extern char *js_rtcGetRemoteDescription(int pc);
+extern char *js_rtcGetRemoteDescriptionType(int pc);
+extern int js_rtcCreateDataChannel(int pc, const char *label, bool unordered, int maxRetransmits,
                                 int maxPacketLifeTime);
-extern void rtcSetDataChannelCallback(int pc, void (*dataChannelCallback)(int, void *));
-extern void rtcSetLocalDescriptionCallback(int pc,
+extern void js_rtcSetDataChannelCallback(int pc, void (*dataChannelCallback)(int, void *));
+extern void js_rtcSetLocalDescriptionCallback(int pc,
                                            void (*descriptionCallback)(const char *, const char *,
                                                                        void *));
-extern void rtcSetLocalCandidateCallback(int pc, void (*candidateCallback)(const char *,
+extern void js_rtcSetLocalCandidateCallback(int pc, void (*candidateCallback)(const char *,
                                                                            const char *, void *));
-extern void rtcSetStateChangeCallback(int pc, void (*stateChangeCallback)(int, void *));
-extern void rtcSetIceStateChangeCallback(int pc, void (*iceStateChangeCallback)(int, void *));
-extern void rtcSetGatheringStateChangeCallback(int pc,
+extern void js_rtcSetStateChangeCallback(int pc, void (*stateChangeCallback)(int, void *));
+extern void js_rtcSetIceStateChangeCallback(int pc, void (*iceStateChangeCallback)(int, void *));
+extern void js_rtcSetGatheringStateChangeCallback(int pc,
                                                void (*gatheringStateChangeCallback)(int, void *));
-extern void rtcSetSignalingStateChangeCallback(int pc,
+extern void js_rtcSetSignalingStateChangeCallback(int pc,
                                                void (*signalingStateChangeCallback)(int, void *));
-extern void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-extern void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
-extern void rtcSetUserPointer(int i, void *ptr);
+extern void js_rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
+extern void js_rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
+extern void js_rtcSetUserPointer(int i, void *ptr);
 }
 
 namespace rtc {
@@ -139,22 +139,22 @@ PeerConnection::PeerConnection(const Configuration &config) {
 		username_ptrs.push_back(iceServer.username.c_str());
 		password_ptrs.push_back(iceServer.password.c_str());
 	}
-	mId = rtcCreatePeerConnection(url_ptrs.data(), username_ptrs.data(), password_ptrs.data(),
+	mId = js_rtcCreatePeerConnection(url_ptrs.data(), username_ptrs.data(), password_ptrs.data(),
 	                              config.iceServers.size());
 	if (!mId)
 		throw std::runtime_error("WebRTC not supported");
 
-	rtcSetUserPointer(mId, this);
-	rtcSetDataChannelCallback(mId, DataChannelCallback);
-	rtcSetLocalDescriptionCallback(mId, DescriptionCallback);
-	rtcSetLocalCandidateCallback(mId, CandidateCallback);
-	rtcSetStateChangeCallback(mId, StateChangeCallback);
-	rtcSetIceStateChangeCallback(mId, IceStateChangeCallback);
-	rtcSetGatheringStateChangeCallback(mId, GatheringStateChangeCallback);
-	rtcSetSignalingStateChangeCallback(mId, SignalingStateChangeCallback);
+	js_rtcSetUserPointer(mId, this);
+	js_rtcSetDataChannelCallback(mId, DataChannelCallback);
+	js_rtcSetLocalDescriptionCallback(mId, DescriptionCallback);
+	js_rtcSetLocalCandidateCallback(mId, CandidateCallback);
+	js_rtcSetStateChangeCallback(mId, StateChangeCallback);
+	js_rtcSetIceStateChangeCallback(mId, IceStateChangeCallback);
+	js_rtcSetGatheringStateChangeCallback(mId, GatheringStateChangeCallback);
+	js_rtcSetSignalingStateChangeCallback(mId, SignalingStateChangeCallback);
 }
 
-PeerConnection::~PeerConnection() { rtcDeletePeerConnection(mId); }
+PeerConnection::~PeerConnection() { js_rtcDeletePeerConnection(mId); }
 
 void PeerConnection::close() {}
 
@@ -167,8 +167,8 @@ PeerConnection::GatheringState PeerConnection::gatheringState() const { return m
 PeerConnection::SignalingState PeerConnection::signalingState() const { return mSignalingState; }
 
 optional<Description> PeerConnection::localDescription() const {
-	char *sdp = rtcGetLocalDescription(mId);
-	char *type = rtcGetLocalDescriptionType(mId);
+	char *sdp = js_rtcGetLocalDescription(mId);
+	char *type = js_rtcGetLocalDescriptionType(mId);
 	if (!sdp || !type) {
 		free(sdp);
 		free(type);
@@ -181,8 +181,8 @@ optional<Description> PeerConnection::localDescription() const {
 }
 
 optional<Description> PeerConnection::remoteDescription() const {
-	char *sdp = rtcGetRemoteDescription(mId);
-	char *type = rtcGetRemoteDescriptionType(mId);
+	char *sdp = js_rtcGetRemoteDescription(mId);
+	char *type = js_rtcGetRemoteDescriptionType(mId);
 	if (!sdp || !type) {
 		free(sdp);
 		free(type);
@@ -204,18 +204,18 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	int maxPacketLifeTime =
 	    reliability.maxPacketLifeTime ? int(reliability.maxPacketLifeTime->count()) : -1;
 
-	return std::make_shared<DataChannel>(rtcCreateDataChannel(
+	return std::make_shared<DataChannel>(js_rtcCreateDataChannel(
 	    mId, label.c_str(), init.reliability.unordered, maxRetransmits, maxPacketLifeTime));
 }
 
 void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptionInit init) {}
 
 void PeerConnection::setRemoteDescription(const Description &description) {
-	rtcSetRemoteDescription(mId, string(description).c_str(), description.typeString().c_str());
+	js_rtcSetRemoteDescription(mId, string(description).c_str(), description.typeString().c_str());
 }
 
 void PeerConnection::addRemoteCandidate(const Candidate &candidate) {
-	rtcAddRemoteCandidate(mId, candidate.candidate().c_str(), candidate.mid().c_str());
+	js_rtcAddRemoteCandidate(mId, candidate.candidate().c_str(), candidate.mid().c_str());
 }
 
 void PeerConnection::onDataChannel(function<void(shared_ptr<DataChannel>)> callback) {

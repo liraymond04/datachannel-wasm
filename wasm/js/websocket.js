@@ -41,13 +41,13 @@
 			},
 		},
 
-		wsCreateWebSocket: function(pUrl) {
+		js_wsCreateWebSocket: function(pUrl) {
 			var url = UTF8ToString(pUrl);
 			if(!window.WebSocket) return 0;
 			return WEBSOCKET.registerWebSocket(new WebSocket(url));
 		},
 
-		wsDeleteWebSocket: function(ws) {
+		js_wsDeleteWebSocket: function(ws) {
 			var webSocket = WEBSOCKET.map[ws];
 			if(webSocket) {
 				webSocket.close();
@@ -56,7 +56,7 @@
 			}
 		},
 
-		wsSetOpenCallback: function(ws, openCallback) {
+		js_wsSetOpenCallback: function(ws, openCallback) {
 			var webSocket = WEBSOCKET.map[ws];
 			var cb = function() {
 				if(webSocket.rtcUserDeleted) return;
@@ -67,7 +67,7 @@
 			if(webSocket.readyState == 1) setTimeout(cb, 0);
 		},
 
- 		wsSetErrorCallback: function(ws, errorCallback) {
+ 		js_wsSetErrorCallback: function(ws, errorCallback) {
 			var webSocket = WEBSOCKET.map[ws];
 			var cb = function() {
 				if(webSocket.rtcUserDeleted) return;
@@ -77,7 +77,7 @@
 			webSocket.onerror = cb;
 		},
 
-		wsSetMessageCallback: function(ws, messageCallback) {
+		js_wsSetMessageCallback: function(ws, messageCallback) {
 			var webSocket = WEBSOCKET.map[ws];
 			webSocket.onmessage = function(evt) {
 				if(webSocket.rtcUserDeleted) return;
@@ -104,7 +104,7 @@
 			};
 		},
 
-		wsSendMessage: function(ws, pBuffer, size) {
+		js_wsSendMessage: function(ws, pBuffer, size) {
 			var webSocket = WEBSOCKET.map[ws];
 			if(webSocket.readyState != 1) return -1;
 			if(size >= 0) {
@@ -124,7 +124,7 @@
 			}
 		},
 
-		wsSetUserPointer: function(ws, ptr) {
+		js_wsSetUserPointer: function(ws, ptr) {
 			var webSocket = WEBSOCKET.map[ws];
 			if(webSocket) webSocket.rtcUserPointer = ptr;
 		},
