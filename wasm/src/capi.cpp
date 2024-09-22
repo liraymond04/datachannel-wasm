@@ -549,6 +549,32 @@ int rtcCreateDataChannel(int pc, const char *label) {
 	return rtcCreateDataChannelEx(pc, label, nullptr);
 }
 
+int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
+	return wrap([&] {
+		DataChannelInit dci = {};
+		if (init) {
+			auto *reliability = &init->reliability;
+			dci.reliability.unordered = reliability->unordered;
+			if (reliability->unreliable) {
+				if (reliability->maxPacketLifeTime > 0)
+					dci.reliability.maxPacketLifeTime.emplace(
+					    milliseconds(reliability->maxPacketLifeTime));
+				else
+					dci.reliability.maxRetransmits.emplace(reliability->maxRetransmits);
+			}
+		}
+
+		auto peerConnection = getPeerConnection(pc);
+		int dc = emplaceDataChannel(
+		    peerConnection->createDataChannel(string(label ? label : ""), std::move(dci)));
+
+		if (auto ptr = getUserPointer(pc))
+			rtcSetUserPointer(dc, *ptr);
+
+		return dc;
+	});
+}
+
 int rtcDeleteDataChannel(int dc) {
 	return wrap([dc] {
 		auto dataChannel = getDataChannel(dc);
@@ -575,9 +601,10 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		Reliability dcr = dataChannel->reliability();
 		std::memset(reliability, 0, sizeof(*reliability));
 		reliability->unordered = dcr.unordered;
-		if(dcr.maxPacketLifeTime) {
+		if (dcr.maxPacketLifeTime) {
 			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = static_cast<unsigned int>(dcr.maxPacketLifeTime->count());
+			reliability->maxPacketLifeTime =
+			    static_cast<unsigned int>(dcr.maxPacketLifeTime->count());
 		} else if (dcr.maxRetransmits) {
 			reliability->unreliable = true;
 			reliability->maxRetransmits = *dcr.maxRetransmits;
