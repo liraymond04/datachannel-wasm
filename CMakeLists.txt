@@ -33,6 +33,7 @@ target_include_directories(datachannel-wasm PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/wasm/include/rtc)
 
 target_link_options(datachannel-wasm PUBLIC
+	"SHELL:-s ASYNCIFY"
 	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/webrtc.js\""
 	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/websocket.js\"")
 
