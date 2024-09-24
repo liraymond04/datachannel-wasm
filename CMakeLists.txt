@@ -36,6 +36,8 @@ target_link_options(datachannel-wasm PUBLIC
 	"SHELL:-s ASYNCIFY"
 	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/webrtc.js\"")
 
+target_link_libraries(datachannel-wasm websocket.js)
+
 execute_process(COMMAND ${CMAKE_CXX_COMPILER} --cflags
     OUTPUT_VARIABLE EM_CFLAGS
     COMMAND_ERROR_IS_FATAL ANY
