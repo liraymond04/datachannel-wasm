@@ -22,50 +22,57 @@
 
 #include "websocket.hpp"
 
+#include <cstring>
 #include <emscripten/emscripten.h>
+#include <emscripten/websocket.h>
 
 #include <exception>
 #include <memory>
 
-extern "C" {
-extern int js_wsCreateWebSocket(const char *url);
-extern void js_wsDeleteWebSocket(int ws);
-extern void js_wsSetOpenCallback(int ws, void (*openCallback)(void *));
-extern void js_wsSetErrorCallback(int ws, void (*errorCallback)(const char *, void *));
-extern void js_wsSetMessageCallback(int ws, void (*messageCallback)(const char *, int, void *));
-extern int js_wsSendMessage(int ws, const char *buffer, int size);
-extern void js_wsSetUserPointer(int ws, void *ptr);
-}
-
 namespace rtc {
 
-void WebSocket::OpenCallback(void *ptr) {
-	WebSocket *w = static_cast<WebSocket *>(ptr);
+EmscriptenWebSocketCreateAttributes ws_attrs = {"", NULL, EM_TRUE};
+
+EM_BOOL WebSocket::OpenCallback(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent,
+                                void *userData) {
+	WebSocket *w = static_cast<WebSocket *>(userData);
 	if (w)
 		w->triggerOpen();
+	return 0;
 }
 
-void WebSocket::ErrorCallback(const char *error, void *ptr) {
-	WebSocket *w = static_cast<WebSocket *>(ptr);
+EM_BOOL WebSocket::ErrorCallback(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent,
+                                 void *userData) {
+	WebSocket *w = static_cast<WebSocket *>(userData);
+
+	char errormsg[256];
+	snprintf(errormsg, 256, "error(socket=%d, eventType=%d, userData=%p)\n", websocketEvent->socket,
+	         eventType, userData);
+
 	if (w)
-		w->triggerError(string(error ? error : "unknown"));
+		w->triggerError(errormsg);
+
+	return 0;
 }
 
-void WebSocket::MessageCallback(const char *data, int size, void *ptr) {
-	WebSocket *w = static_cast<WebSocket *>(ptr);
+EM_BOOL WebSocket::MessageCallback(int eventType, const EmscriptenWebSocketMessageEvent *e,
+                                   void *userData) {
+	WebSocket *w = static_cast<WebSocket *>(userData);
+
 	if (w) {
-		if (data) {
-			if (size >= 0) {
-				auto b = reinterpret_cast<const byte *>(data);
-				w->triggerMessage(binary(b, b + size));
+		if (e->data) {
+			if (e->numBytes >= 0) {
+				auto b = reinterpret_cast<const byte *>(e->data);
+				w->triggerMessage(binary(b, b + e->numBytes));
 			} else {
-				w->triggerMessage(string(data));
+				w->triggerMessage(string((char *)e->data));
 			}
 		} else {
 			w->close();
 			w->triggerClosed();
 		}
 	}
+	return 0;
 }
 
 WebSocket::WebSocket() : mId(0), mConnected(false) {}
@@ -74,21 +81,23 @@ WebSocket::~WebSocket() { close(); }
 
 void WebSocket::open(const string &url) {
 	close();
-
-	mId = js_wsCreateWebSocket(url.c_str());
-	if (!mId)
+	if (!emscripten_websocket_is_supported()) {
 		throw std::runtime_error("WebSocket not supported");
+	}
 
-	js_wsSetUserPointer(mId, this);
-	js_wsSetOpenCallback(mId, OpenCallback);
-	js_wsSetErrorCallback(mId, ErrorCallback);
-	js_wsSetMessageCallback(mId, MessageCallback);
+	strcpy((char *)ws_attrs.url, url.c_str());
+	EMSCRIPTEN_WEBSOCKET_T ws = emscripten_websocket_new(&ws_attrs);
+	mId = ws;
+
+	emscripten_websocket_set_onopen_callback(ws, this, OpenCallback);
+	emscripten_websocket_set_onerror_callback(ws, this, ErrorCallback);
+	emscripten_websocket_set_onmessage_callback(ws, this, MessageCallback);
 }
 
 void WebSocket::close() {
 	mConnected = false;
 	if (mId) {
-		js_wsDeleteWebSocket(mId);
+		emscripten_websocket_close(mId, 0, 0);
 		mId = 0;
 	}
 }
@@ -104,9 +113,11 @@ bool WebSocket::send(message_variant message) {
 	return std::visit(
 	    overloaded{[this](const binary &b) {
 		               auto data = reinterpret_cast<const char *>(b.data());
-		               return js_wsSendMessage(mId, data, int(b.size())) >= 0;
+		               return emscripten_websocket_send_binary(mId, (void *)data, b.size()) >= 0;
 	               },
-	               [this](const string &s) { return js_wsSendMessage(mId, s.c_str(), -1) >= 0; }},
+	               [this](const string &s) {
+		               return emscripten_websocket_send_utf8_text(mId, s.c_str()) >= 0;
+	               }},
 	    std::move(message));
 }
 
@@ -114,7 +125,7 @@ bool WebSocket::send(const byte *data, size_t size) {
 	if (!mId)
 		return false;
 
-	return js_wsSendMessage(mId, reinterpret_cast<const char *>(data), int(size)) >= 0;
+	return emscripten_websocket_send_binary(mId, (void *) data, size) >= 0;
 }
 
 void WebSocket::triggerOpen() {

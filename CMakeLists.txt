@@ -34,6 +34,17 @@ target_include_directories(datachannel-wasm PRIVATE
 
 target_link_options(datachannel-wasm PUBLIC
 	"SHELL:-s ASYNCIFY"
-	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/webrtc.js\""
-	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/websocket.js\"")
+	"SHELL:--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/wasm/js/webrtc.js\"")
 
+execute_process(COMMAND ${CMAKE_CXX_COMPILER} --cflags
+    OUTPUT_VARIABLE EM_CFLAGS
+    COMMAND_ERROR_IS_FATAL ANY
+)
+string(STRIP "${EM_CFLAGS}" EM_CFLAGS)
+find_package(Python3 REQUIRED)
+message("Python: ${Python3_EXECUTABLE}")
+set(ENV{EXTRA_FLAGS} "${EM_CFLAGS}")
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fix_compile_commands.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)

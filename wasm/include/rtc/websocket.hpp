@@ -25,6 +25,7 @@
 
 #include "channel.hpp"
 #include "common.hpp"
+#include <emscripten/websocket.h>
 
 namespace rtc {
 
@@ -48,9 +49,13 @@ private:
 	int mId;
 	bool mConnected;
 
-	static void OpenCallback(void *ptr);
-	static void ErrorCallback(const char *error, void *ptr);
-	static void MessageCallback(const char *data, int size, void *ptr);
+	static EM_BOOL OpenCallback(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent,
+	                            void *userData);
+	static EM_BOOL ErrorCallback(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent,
+	                             void *userData);
+	static EM_BOOL MessageCallback(int eventType,
+	                               const EmscriptenWebSocketMessageEvent *websocketEvent,
+	                               void *userData);
 };
 
 } // namespace rtc
